@@ -1,0 +1,23 @@
+{
+  "name": "obsidian-mirri-link",
+  "version": "1.0.0",
+  "description": "Obsidian plugin to quickly share a note.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production"
+  },
+  "author": "Thomas Schoffelen <thomas@schof.co>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "builtin-modules": "^5.0.0",
+    "esbuild": "^0.25.3",
+    "obsidian": "^1.8.7",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.3"
+  },
+  "dependencies": {
+    "mime": "^4.0.7"
+  }
+}
