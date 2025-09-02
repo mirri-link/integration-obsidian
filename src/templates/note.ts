@@ -4,6 +4,7 @@ import { stylesTemplate } from "./styles";
 import { getFrontmatterTemplate } from "./frontmatter";
 import { replaceImages } from "./images";
 import { replaceLinks } from "./links";
+import { replaceHighlights } from "./highlights";
 
 export const getNoteTemplate = async (app: App | null, file: TFile) => {
   const frontMatterTable = await getFrontmatterTemplate(app, file);
@@ -12,6 +13,7 @@ export const getNoteTemplate = async (app: App | null, file: TFile) => {
   content = content.replace(/^\s*?---\n.*?\n---/s, "");
   content = await replaceImages(content, file);
   content = await replaceLinks(content);
+  content = await replaceHighlights(content);
 
   content = `# ${file.basename}\n\n${frontMatterTable}\n\n${content}`;
   content += stylesTemplate;
