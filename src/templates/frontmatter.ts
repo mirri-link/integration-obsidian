@@ -16,12 +16,17 @@ export const getFrontmatterTemplate = async (app: App | null, file: TFile) => {
       if (key === "tags") {
         frontMatterTable += fm[key]
           .map(
-            (tag) =>
+            (tag: string) =>
               `<span class="tag tooltipped" title="Internal link: ${tag}">${tag}</span>`
           )
           .join(" ");
       } else {
-        frontMatterTable += fm[key].toString();
+        let content = fm[key].toString();
+        if(content.startsWith('[[') && content.endsWith(']]')) {
+          const link = content.slice(2, -2);
+          content = `<span class="internal-link tooltipped" title="Internal link: ${link}">${link}</span>`;
+        }
+        frontMatterTable += content;
       }
       frontMatterTable += `</td></tr>`;
     }
