@@ -4,41 +4,72 @@ import { topLevelApp, topLevelPlugin } from "../main";
 import { replaceAsync } from "../lib/replace";
 import { uploadFile } from "../lib/files";
 
-export const replaceImages = async (content, file) => {
-  // Excalidraw images
-  content = await replaceAsync(
-    content,
-    /!\[\[([^\]]+)\.excalidraw\.md\]\]/g,
-    async (_, value) => {
-      const filename = `${value}.excalidraw.md`;
-      const preview = document.querySelector(
-        `.excalidraw-svg[src="${filename}"] img`
-      );
-      const src = preview && (preview as HTMLImageElement).src;
+const getExcalidrawAPI = () => {
+  try {
+    return (window as any).ExcalidrawAutomate?.getAPI?.() || null;
+  } catch (e) {
+    return null;
+  }
+};
 
-      // TODO
-      if (!src) {
-        return "\n\n(missing Excalidraw image)\n\n";
-      }
-
-      return `<img alt="Inline Excalidraw drawing" data-filename="${filename}" src="${src}"/>`;
-    }
+const isExcalidrawFile = (ea, file) => {
+  if (!file) return false;
+  if (ea?.isExcalidrawFile) return ea.isExcalidrawFile(file);
+  return (
+    file.extension === "excalidraw" || file.name.endsWith(".excalidraw.md")
   );
+};
 
-  // Images and videos
+const renderExcalidraw = async (ea, file) => {
+  if (!ea) return null;
+  try {
+    const blob: Blob = await ea.createPNG(file.path, 2);
+    return await blob.arrayBuffer();
+  } catch (e) {
+    console.error("Failed to render Excalidraw drawing", e);
+    return null;
+  } finally {
+    ea.destroy?.();
+  }
+};
+
+export const replaceImages = async (content, file) => {
+  // Images, videos and Excalidraw drawings
   content = await replaceAsync(
     content,
     /!\[\[([^\]]+)\]\]/g,
     async (_, value) => {
       let size;
       [value, size] = value.split("|");
-      const filePath = await topLevelApp.metadataCache.getFirstLinkpathDest(
-        value.trim(),
+      const linkpath = value.split("#")[0].trim();
+      const linkedFile = topLevelApp.metadataCache.getFirstLinkpathDest(
+        linkpath,
         file.path
       );
-      const basename = value?.split("/")?.pop()?.trim() || "image.jpg";
+      if (!linkedFile) {
+        return `\n\n(missing embed: ${linkpath})\n\n`;
+      }
+
+      const attributes = size ? `width="${size.trim()}"` : "";
+
+      const ea = getExcalidrawAPI();
+      if (isExcalidrawFile(ea, linkedFile)) {
+        const png = await renderExcalidraw(ea, linkedFile);
+        if (!png) {
+          return "\n\n(missing Excalidraw image)\n\n";
+        }
+        const publicUrl = await uploadFile(
+          topLevelPlugin,
+          png,
+          `${linkedFile.basename.replace(/\.excalidraw$/, "")}.png`,
+          "image/png"
+        );
+        return `<img alt="Inline Excalidraw drawing" src="${publicUrl}" ${attributes} />`;
+      }
+
+      const basename = linkedFile.name || "image.jpg";
       const contentType = mime.getType(basename) || "application/octet-stream";
-      const fileContent = await file.vault.readBinary(filePath);
+      const fileContent = await file.vault.readBinary(linkedFile);
 
       const publicUrl = await uploadFile(
         topLevelPlugin,
@@ -55,7 +86,6 @@ export const replaceImages = async (content, file) => {
         return `<a href="${publicUrl}">Video: ${basename}</a>`;
       }
 
-      const attributes = size ? `width="${size}"` : "";
       return `<img alt="Inline image" src="${publicUrl}" ${attributes} />`;
     }
   );

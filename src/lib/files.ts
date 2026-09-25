@@ -26,9 +26,11 @@ export const uploadFile = async (
   fileName,
   contentType
 ) => {
-  const cacheKey = `upload-cache-${fileName}-${contentType}-${
-    fileContents.toString().length
-  }`;
+  const digest = await crypto.subtle.digest("SHA-256", fileContents);
+  const hash = Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  const cacheKey = `upload-cache-${fileName}-${contentType}-${hash}`;
 
   if (plugin.settings[cacheKey]) {
     return plugin.settings[cacheKey];
